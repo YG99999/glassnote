@@ -14,9 +14,10 @@ export function annotationElements(items: Annotation[], width: number, height: n
     const attrs = { fill: "none", stroke: item.color, "stroke-width": 2.5, "stroke-linecap": "round", "stroke-linejoin": "round", "vector-effect": "non-scaling-stroke", "pointer-events": "none" };
     if (item.type === "pin") {
       number++;
+      const labelColor = item.color === "#f8fafc" ? "#18212b" : "#f8fafc";
       const group = shape("g", { class: `annotation-pin${selected === item.id ? " selected" : ""}`, "data-pin": item.id, role: "button", tabindex: 0, "aria-label": `Note ${number}: ${item.text || "New note"}` });
-      group.append(shape("ellipse", { cx: item.x, cy: item.y, rx: 14 * sx, ry: 14 * sy, fill: item.color, stroke: "#f8fafc", "stroke-width": 1.2, "vector-effect": "non-scaling-stroke" }));
-      const text = shape("text", { x: item.x, y: item.y, dy: ".35em", "text-anchor": "middle", fill: "#f8fafc", "font-size": 12, "font-family": "Segoe UI, sans-serif", "font-weight": 600, transform: `translate(${item.x} ${item.y}) scale(${sx} ${sy}) translate(${-item.x} ${-item.y})` });
+      group.append(shape("ellipse", { cx: item.x, cy: item.y, rx: 14 * sx, ry: 14 * sy, fill: item.color, stroke: labelColor, "stroke-width": 1.2, "vector-effect": "non-scaling-stroke" }));
+      const text = shape("text", { x: item.x, y: item.y, dy: ".35em", "text-anchor": "middle", fill: labelColor, "font-size": 12, "font-family": "Segoe UI, sans-serif", "font-weight": 600, transform: `translate(${item.x} ${item.y}) scale(${sx} ${sy}) translate(${-item.x} ${-item.y})` });
       text.textContent = String(number); group.append(text); return group;
     }
     if (item.type === "pen") return shape("polyline", { ...attrs, points: item.points.map(p => p.join(",")).join(" ") });

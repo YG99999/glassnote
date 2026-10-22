@@ -111,10 +111,19 @@ try {
   assert.equal(await page.locator('#projectName').innerText(),'Inbox');
   await page.locator('#projectToggle').click();
   await page.locator('[data-overlay-project="87f5be98-0025-4fb9-a51f-01e267f2667c"]').click();
+  await page.locator('#colorToggle').click();
+  await page.locator('[data-color="#f8fafc"]').click();
   await page.getByRole('button',{name:'Numbered note',exact:true}).click();
   await page.mouse.click(before.x+before.width*.4,before.y+before.height*.5);
   assert.equal(await page.evaluate(()=>document.activeElement?.id),'pinEditorInput','A new pin should focus its inline note');
   await checkGlass();
+  const markerContrast = await page.locator('.annotation-pin').evaluate(el => {
+    const toRgb = color => color.match(/\d+/g).slice(0,3).map(Number).map(n => n/255).map(v => v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+    const luminance = color => toRgb(color).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+    const a=luminance(getComputedStyle(el.querySelector('text')).fill), b=luminance(getComputedStyle(el.querySelector('ellipse')).fill);
+    return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+  });
+  assert.ok(markerContrast>=4.5,'A white marker must keep its number readable');
   if(region[0]===.03) await page.screenshot({path:'test-results/overlay/glass-note-editor.png'});
   await page.locator('#pinEditorInput').fill('Make this easier to find.'); await page.locator('#savePinNote').click();
   assert.equal(await page.locator('#pinEditor').isVisible(),false);
