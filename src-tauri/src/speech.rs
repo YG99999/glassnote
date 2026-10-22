@@ -143,6 +143,15 @@ pub struct Decoder {
 }
 impl Decoder {
     pub fn load(path: &Path) -> Result<Self> {
+        // Guard before entering the native engine compiled with MSVC /arch:AVX2.
+        #[cfg(target_arch = "x86_64")]
+        if !(std::arch::is_x86_feature_detected!("avx2")
+            && std::arch::is_x86_feature_detected!("fma")
+            && std::arch::is_x86_feature_detected!("f16c")
+            && std::arch::is_x86_feature_detected!("bmi2"))
+        {
+            return Err("Local transcription needs an AVX2-compatible x64 CPU (with FMA, F16C and BMI2). Screenshots and typed notes still work on this PC.".into());
+        }
         if !model_ready(path) {
             return Err("Download the speech model in Settings, then retry transcription.".into());
         }

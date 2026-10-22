@@ -4,3 +4,11 @@ LIBCLANG_PATH = { value = "../.tools/libclang/native", relative = true }
 # cmake-rs otherwise replaces MSVC's Release defaults without restoring /O2.
 CMAKE_C_FLAGS_RELEASE = "/O2 /DNDEBUG"
 CMAKE_CXX_FLAGS_RELEASE = "/O2 /DNDEBUG"
+# A distributed binary must not inherit the build host's AVX-512/VNNI features.
+# MSVC /arch:AVX2 also permits FMA, F16C and BMI2; speech.rs checks before loading.
+GGML_NATIVE = "OFF"
+GGML_AVX = "ON"
+GGML_AVX2 = "ON"
+GGML_BMI2 = "ON"
+GGML_AVX512 = "OFF"
+GGML_AVX_VNNI = "OFF"

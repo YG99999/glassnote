@@ -83,4 +83,6 @@ Update the version in `package.json`, `package-lock.json`, `src-tauri/Cargo.toml
 update `CHANGELOG.md`, and regenerate notices after dependency changes with
 `node scripts/licenses.mjs`. Push a matching `vX.Y.Z` tag to build and publish
 the installer and SHA-256 checksum through GitHub Actions. Main-branch builds
-also keep the installer as a workflow artifact. Release builds are currently unsigned.
+also keep the installer as a workflow artifact. Release builds are currently unsigned. The native speech engine uses a fixed
+AVX2/FMA/F16C/BMI2 target instead of the build host's native instruction set;
+a runtime check prevents loading it on unsupported CPUs.
