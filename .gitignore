@@ -1,0 +1,20 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+.verification/
+.tools/
+*.log
+
+# Local prototypes and private verification data are not part of the app.
+mockup/
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# Generated mobile icons are unused by this Windows-only app.
+src-tauri/icons/android/
+src-tauri/icons/ios/

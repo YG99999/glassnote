@@ -1,0 +1,33 @@
+name: Bug report
+description: Report a reproducible problem in Glassnote.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please use synthetic screenshots and remove private text, audio, and paths.
+  - type: input
+    id: version
+    attributes:
+      label: Glassnote version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version and display setup
+      description: Include display count and scaling; microphone details if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: What did you do, what happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or error text
+      description: Optional. Review attachments for private information first.

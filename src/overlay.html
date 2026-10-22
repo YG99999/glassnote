@@ -1,0 +1,105 @@
+<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+    <symbol id="mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></symbol>
+    <symbol id="stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></symbol>
+    <symbol id="pen" viewBox="0 0 24 24"><path d="m15 5 4 4M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Zm1-5 4 4"/></symbol>
+    <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></symbol>
+    <symbol id="rectangle" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/></symbol>
+    <symbol id="ellipse" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></symbol>
+    <symbol id="pin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 9 2-1v8m-2 0h4"/></symbol>
+    <symbol id="undo" viewBox="0 0 24 24"><path d="m8 4-5 5 5 5M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+    <symbol id="folder" viewBox="0 0 24 24"><path d="M3 8V6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Zm0 2h18"/></symbol>
+    <symbol id="chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="frame" viewBox="0 0 24 24"><path d="M3 8V4h5m8 0h5v4M3 16v4h5m8 0h5v-4"/></symbol>
+    <symbol id="text" viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h8"/></symbol>
+    <symbol id="swap-horizontal" viewBox="0 0 24 24"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></symbol>
+    <symbol id="swap-vertical" viewBox="0 0 24 24"><path d="M8 20V4M4 8l4-4 4 4M16 4v16m-4-4 4 4 4-4"/></symbol>
+  </defs></svg>
+  <img class="desktop" id="frozenDesktop" data-glass-backdrop src="" alt="Frozen screen" draggable="false" crossorigin="anonymous">
+
+  <header class="recorder-anchor" aria-label="Voice recorder">
+    <div class="recorder glass" id="recorder">
+      <div id="recorderControls">
+        <div class="recorder-row">
+          <span class="mic" aria-hidden="true"><svg class="icon"><use href="#mic"/></svg></span>
+          <div class="meter" id="meter" aria-hidden="true"></div>
+          <span class="elapsed" id="elapsed">0:00</span>
+          <button class="record-action" id="recordButton" type="button"><svg class="icon"><use href="#mic"/></svg><span class="record-label">Record</span></button>
+          <button class="save-action primary" id="saveButton" type="button"><svg class="icon"><use href="#check"/></svg>Save</button>
+          <span class="recorder-divider" aria-hidden="true"></span>
+          <button class="icon-button" id="toggleCaption" type="button" aria-label="Toggle transcript" aria-expanded="false" aria-controls="caption" title="Show or hide transcript"><svg class="icon"><use href="#text"/></svg></button>
+          <button class="icon-button position-switch" id="moveRecorder" type="button" aria-label="Move recorder to bottom" title="Move recorder to bottom"><svg class="icon"><use href="#swap-vertical"/></svg></button>
+          <button class="icon-button" id="dismissButton" type="button" aria-label="Close capture" title="Close capture"><svg class="icon"><use href="#close"/></svg></button>
+        </div>
+        <div class="caption empty" id="caption" inert><div class="caption-overflow"><div class="caption-line"><textarea class="caption-text" id="captionText" rows="1" aria-label="Recorder transcript" placeholder="Record a thought, or type it here."></textarea><button class="icon-button caption-close" id="hideCaption" type="button" aria-label="Hide transcript" title="Hide transcript"><svg class="icon"><use href="#close"/></svg></button></div></div></div>
+        <div class="overlay-error" id="overlayError" role="alert" hidden><p id="errorText"></p><button id="retryTranscription" type="button" hidden>Retry transcription</button><button id="downloadModel" type="button" hidden>Download voice model · 32 MB</button><button id="cancelDownload" type="button" hidden>Cancel download</button></div>
+      </div>
+      <div class="saved-confirmation" id="savedConfirmation" role="status" hidden><svg class="icon"><use href="#check"/></svg><span id="savedText"></span></div>
+    </div>
+  </header>
+
+  <main class="workspace" aria-label="Screenshot and notes">
+    <section class="capture-column" aria-label="Captured screenshot">
+      <div class="capture" id="capture">
+        <img class="capture-image" id="captureImage" alt="Selected screenshot" draggable="false"><svg class="annotations select-mode" id="annotations" viewBox="0 0 1000 680" preserveAspectRatio="none" aria-label="Screenshot annotations"></svg>
+      </div>
+    </section>
+
+    <div class="tool-column">
+      <nav class="tool-dock glass" aria-label="Annotation tools">
+        <button class="tool icon-button" type="button" data-tool="pen" aria-label="Pen" aria-pressed="false" title="Draw"><svg class="icon"><use href="#pen"/></svg></button>
+        <button class="tool icon-button" type="button" data-tool="arrow" aria-label="Arrow" aria-pressed="false" title="Arrow"><svg class="icon"><use href="#arrow"/></svg></button>
+        <button class="tool icon-button" type="button" data-tool="rectangle" aria-label="Rectangle" aria-pressed="false" title="Rectangle"><svg class="icon"><use href="#rectangle"/></svg></button>
+        <button class="tool icon-button" type="button" data-tool="ellipse" aria-label="Circle" aria-pressed="false" title="Circle"><svg class="icon"><use href="#ellipse"/></svg></button>
+        <button class="tool icon-button" type="button" data-tool="pin" aria-label="Numbered note" aria-pressed="false" title="Add a numbered note"><svg class="icon"><use href="#pin"/></svg></button>
+        <span class="tool-rule" aria-hidden="true"></span>
+        <button class="tool icon-button" id="colorToggle" type="button" aria-label="Choose color" aria-expanded="false" aria-controls="colorMenu" title="Color"><span class="color-dot" id="colorDot"></span></button>
+        <button class="tool icon-button" id="undoButton" type="button" aria-label="Undo annotation" title="Undo (Ctrl+Z)"><svg class="icon"><use href="#undo"/></svg></button>
+        <button class="tool icon-button position-switch" id="moveTools" type="button" aria-label="Move drawing tools to left" title="Move drawing tools to left"><svg class="icon"><use href="#swap-horizontal"/></svg></button>
+      </nav>
+      <div class="color-menu glass" id="colorMenu" aria-label="Drawing colors" hidden>
+        <button class="swatch" type="button" data-color="#3b73e0" style="--swatch:#3b73e0" aria-label="Blue" aria-pressed="true"></button>
+        <button class="swatch" type="button" data-color="#d84c54" style="--swatch:#d84c54" aria-label="Red" aria-pressed="false"></button>
+        <button class="swatch" type="button" data-color="#f8fafc" style="--swatch:#f8fafc" aria-label="Pearl" aria-pressed="false"></button>
+        <button class="swatch" type="button" data-color="#18212b" style="--swatch:#18212b" aria-label="Ink" aria-pressed="false"></button>
+      </div>
+    </div>
+
+  </main>
+
+  <form class="inline-note glass" id="pinEditor" role="dialog" aria-labelledby="inlineNoteTitle" hidden>
+    <div class="inline-note-header"><span class="note-number" id="inlineNoteNumber">1</span><span id="inlineNoteTitle">Note</span><button class="icon-button" id="closePinEditor" type="button" aria-label="Close note editor"><svg class="icon"><use href="#close"/></svg></button></div>
+    <textarea class="inline-note-input" id="pinEditorInput" aria-label="Numbered note text" placeholder="What should change here?" maxlength="4000"></textarea>
+    <div class="note-dictation-status" id="pinVoiceStatus" role="status" hidden><span class="note-voice-dot"></span><span id="pinVoiceLabel">Listening…</span><span id="pinVoiceTime">0:00</span></div>
+    <div class="inline-note-footer"><button type="button" class="note-dictate" id="recordPinNote" title="Append voice to this note"><svg class="icon"><use href="#mic"/></svg><span>Dictate</span></button><button class="primary" id="savePinNote" type="submit">Save note</button></div>
+  </form>
+  <footer class="preview-footer" aria-label="Capture destination and actions">
+    <div class="destination-pill glass">
+      <button class="project-toggle" id="projectToggle" type="button" aria-expanded="false" aria-controls="projectMenu" title="Choose where this capture is saved"><svg class="icon"><use href="#folder"/></svg><span class="project-name" id="projectName">Inbox</span><svg class="icon chevron"><use href="#chevron"/></svg></button>
+      <span class="save-state" id="editStatus" role="status">Saved</span>
+      <button class="icon-button" id="moreToggle" type="button" aria-label="More capture actions" aria-expanded="false" aria-controls="captureMenu" title="More"><svg class="icon" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+      <button class="icon-button position-switch" id="moveFooter" type="button" aria-label="Move capture bar to left" title="Move capture bar to left"><svg class="icon"><use href="#swap-horizontal"/></svg></button>
+    </div>
+    <div class="project-menu glass" id="projectMenu" aria-label="Choose project" hidden>
+      <div class="project-options project-tree" id="projectOptions"></div>
+      <div class="project-create">
+        <button type="button" id="newProject"><svg class="icon"><use href="#plus"/></svg>New project</button>
+        <button type="button" id="newSubproject"><svg class="icon"><use href="#plus"/></svg>New subfolder here</button>
+        <form class="project-form" id="newProjectForm" novalidate hidden>
+          <label for="newProjectName">Project name</label><input id="newProjectName" name="projectName" placeholder="e.g. Design feedback" maxlength="80" autocomplete="off" required aria-describedby="projectError">
+          <p class="project-error" id="projectError" role="status" hidden></p>
+          <div class="project-actions"><button type="button" id="cancelProject">Cancel</button><button class="project-submit" type="submit">Create</button></div>
+        </form>
+      </div>
+    </div>
+    <div class="capture-menu glass" id="captureMenu" aria-label="Capture actions" hidden>
+      <button id="glassToggle" type="button" aria-pressed="true"><span>Liquid glass</span><span class="material-switch" aria-hidden="true"></span></button>
+      <button id="openLibrary" type="button">Open library</button>
+      <button id="discardCapture" type="button">Discard capture</button>
+      <div class="discard-confirm" id="discardConfirm" hidden><p>Discard this screenshot and voice note?</p><div><button id="cancelDiscard" type="button">Keep</button><button id="confirmDiscard" type="button">Discard</button></div></div>
+    </div>
+  </footer>
+<div class="status glass" id="status" role="status" hidden></div>

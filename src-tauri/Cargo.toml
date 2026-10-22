@@ -1,0 +1,45 @@
+[package]
+name = "glassnote"
+version = "0.1.0"
+description = "Screenshots with linked local voice notes"
+authors = ["Yuval Gerassi"]
+license = "MIT"
+repository = "https://github.com/YG99999/glassnote"
+edition = "2021"
+rust-version = "1.90"
+default-run = "glassnote"
+
+[lib]
+name = "glassnote_lib"
+crate-type = ["lib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+xcap = "0.9"
+cpal = "0.18"
+hound = "3.5"
+rubato = "0.16"
+whisper-rs = "0.16"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+sha2 = "0.10"
+tempfile = "3"
+zip = { version = "9.0.5", default-features = false }
+winreg = "0.55"
+windows-sys = { version = "0.61", features = ["Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Ole", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging"] }
+
+[profile.release]
+lto = "thin"
+strip = true
+codegen-units = 1

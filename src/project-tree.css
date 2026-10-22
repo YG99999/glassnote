@@ -1,0 +1,15 @@
+.project-tree-branch { min-width:0; }
+.project-tree-row { position:relative; }
+.project-tree-row>button:not(.project-disclosure)>.icon:first-child { visibility:hidden; }
+.project-tree .project-tree-row button.project-disclosure { position:absolute; z-index:2; top:calc(50% - 12px); left:8px; display:grid; place-items:center; width:22px; height:24px; min-height:0; margin:0; padding:0; border:0; border-radius:7px; color:var(--muted); background:none; }
+.project-tree .project-tree-row button.project-disclosure:hover { background:var(--hover); }
+.project-tree .project-disclosure>.icon { visibility:visible; width:14px; height:14px; transition:transform .2s cubic-bezier(.22,1,.36,1); }
+.project-tree [data-collapsed="true"]>.project-tree-row>.project-disclosure>.icon { transform:rotate(-90deg); }
+.project-tree-children { display:grid; grid-template-rows:1fr; opacity:1; transition:grid-template-rows .2s cubic-bezier(.22,1,.36,1),opacity .16s; }
+.project-tree-inner { min-height:0; overflow:hidden; }
+[data-collapsed="true"]>.project-tree-children { grid-template-rows:0fr; opacity:0; }
+#projects>.project-tree-branch+.project-tree-branch { margin-top:6px; }
+#projects .root-project { margin-top:0; }
+.project-tree [data-collapsed="true"]:has(.subfolder.selected)>.project-tree-row>button:not(.project-disclosure),
+.project-tree [data-collapsed="true"]:has(.subfolder[aria-pressed="true"])>.project-tree-row>button:not(.project-disclosure) { color:var(--accent, var(--blue)); }
+@media(prefers-reduced-motion:reduce) { .project-tree-children,.project-tree .project-disclosure>.icon { transition:none; } }

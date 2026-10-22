@@ -1,0 +1,101 @@
+name: Windows
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  check:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Set up Rust
+        run: rustup update stable --no-self-update
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: windows-rust-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'src-tauri/.cargo/config.toml', 'scripts/setup-build.ps1') }}
+      - run: npm ci
+      - name: Check matching versions
+        shell: pwsh
+        run: |
+          $package = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tauri = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $cargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version = "([^"]+)"').Matches.Groups[1].Value
+          if ($package -ne $tauri -or $package -ne $cargo) { throw 'Package versions differ' }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$package") { throw 'Release tag does not match package version' }
+      - run: npm run build
+      - run: npm run test:rust
+      - run: npm run lint:rust
+      - run: npx playwright install chromium
+      - run: npm run test:ui
+      - name: Build Windows installer
+        if: github.event_name != 'pull_request'
+        run: npm run app:build
+      - name: Write checksum
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Set-Content src-tauri/target/release/bundle/nsis/SHA256SUMS.txt -Encoding ascii
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: glassnote-windows-x64
+          path: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/nsis/SHA256SUMS.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: ui-test-results
+          path: test-results/
+          if-no-files-found: ignore
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: check
+    runs-on: windows-2022
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Download checked installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download ${{ github.run_id }} --name glassnote-windows-x64 --dir release
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: pwsh
+        run: |
+          $notes = "docs/release-notes/$($env:RELEASE_TAG.Substring(1)).md"
+          if (Test-Path -LiteralPath $notes) {
+            gh release create $env:RELEASE_TAG release/* --verify-tag --title "Glassnote $env:RELEASE_TAG" --notes-file $notes
+          } else {
+            gh release create $env:RELEASE_TAG release/* --verify-tag --title "Glassnote $env:RELEASE_TAG" --generate-notes --notes 'Windows 11 x64. Download the installer below. Releases are unsigned. See the README for setup and current limitations.'
+          }

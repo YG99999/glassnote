@@ -1,0 +1,6 @@
+[env]
+# scripts/setup-build.ps1 supplies a build-only libclang DLL without a system install.
+LIBCLANG_PATH = { value = "../.tools/libclang/native", relative = true }
+# cmake-rs otherwise replaces MSVC's Release defaults without restoring /O2.
+CMAKE_C_FLAGS_RELEASE = "/O2 /DNDEBUG"
+CMAKE_CXX_FLAGS_RELEASE = "/O2 /DNDEBUG"
