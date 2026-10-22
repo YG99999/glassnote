@@ -26,7 +26,13 @@ $expectedHash = '4DD2D3B82FAB35E2BF9CA717D7B63AC990A3519C7E312F19FA8E86DCC712F7F
 New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
 $archivePath = Join-Path $toolDirectory 'libclang.zip'
 Invoke-WebRequest -Uri $url -OutFile $archivePath
-if ((Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash -ne $expectedHash) {
+# Use .NET directly: a PowerShell 7 parent can leave Windows PowerShell with
+# a module search path that does not expose Get-FileHash on clean machines.
+$archiveStream = [System.IO.File]::OpenRead($archivePath)
+$archiveHasher = [System.Security.Cryptography.SHA256]::Create()
+try { $archiveHash = [BitConverter]::ToString($archiveHasher.ComputeHash($archiveStream)).Replace('-', '') }
+finally { $archiveHasher.Dispose(); $archiveStream.Dispose() }
+if ($archiveHash -ne $expectedHash) {
     Remove-Item -LiteralPath $archivePath
     throw 'The libclang download did not match its expected SHA-256 checksum.'
 }
