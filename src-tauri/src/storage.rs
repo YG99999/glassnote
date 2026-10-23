@@ -680,7 +680,8 @@ impl Store {
                 .annotations
                 .iter()
                 .any(|a| a.kind != "pin" || !a.text.trim().is_empty())
-            || self.asset(id, "audio.wav")?.exists();
+            || self.asset(id, "audio.wav")?.exists()
+            || self.capture_dir(id)?.join("recording.wav").exists();
         if discard || !has_content {
             self.delete_capture(id)?;
             return Ok(false);
@@ -1459,7 +1460,14 @@ mod tests {
     fn saving_keeps_text_drawings_and_recordings_but_not_empty_pins() {
         let root = tempfile::tempdir().unwrap();
         let mut store = Store::open(root.path().into()).unwrap();
-        for kind in ["text", "pin", "rectangle", "audio", "empty-pin"] {
+        for kind in [
+            "text",
+            "pin",
+            "rectangle",
+            "audio",
+            "pending-audio",
+            "empty-pin",
+        ] {
             let id = store.insert_capture(b"image", 20, 10).unwrap();
             if matches!(kind, "pin" | "rectangle" | "empty-pin") {
                 store
@@ -1486,6 +1494,12 @@ mod tests {
             if kind == "audio" {
                 wav(&store.asset(&id, "audio.wav").unwrap(), 1000);
             }
+            if kind == "pending-audio" {
+                wav(&store.capture_dir(&id).unwrap().join("recording.wav"), 1000);
+                store
+                    .update_capture(&id, |c| c.status = "failed".into())
+                    .unwrap();
+            }
             let text = if kind == "text" { "A thought" } else { "" };
             let kept = store.finish_capture(&id, INBOX, text, false).unwrap();
             assert_eq!(kept, kind != "empty-pin");
@@ -1494,7 +1508,7 @@ mod tests {
             }
         }
         drop(store);
-        assert_eq!(Store::open(root.path().into()).unwrap().captures.len(), 4);
+        assert_eq!(Store::open(root.path().into()).unwrap().captures.len(), 5);
     }
     #[test]
     fn numbered_dictation_recovers_target_and_preserves_main_transcript() {

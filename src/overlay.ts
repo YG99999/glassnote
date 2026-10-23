@@ -213,7 +213,7 @@ export async function bootOverlay(root: HTMLElement) {
       if (discard) { clearTimeout(saveTimer); await saveChain.catch(() => {}); await leaveOverlay(); }
       else {
         await flush();
-        if (!transcript.trim() && !annotations.some(a => a.type !== "pin" || a.text.trim()) && !current.audioPath) await leaveOverlay();
+        if (!transcript.trim() && !annotations.some(a => a.type !== "pin" || a.text.trim()) && !current.audioPath && current.status !== "failed") await leaveOverlay();
       }
       const kept = await call("finish_capture", { id, projectId, text: transcript, discard });
       if (!kept) { saved = true; return; }
