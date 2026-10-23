@@ -52,6 +52,7 @@ jobs:
           $cargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version = "([^"]+)"').Matches.Groups[1].Value
           if ($package -ne $tauri -or $package -ne $cargo) { throw 'Package versions differ' }
           if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$package") { throw 'Release tag does not match package version' }
+          "GLASSNOTE_VERSION=$package" >> $env:GITHUB_ENV
       - run: npm run build
       - run: npm run test:rust
       - run: npm run lint:rust
@@ -64,16 +65,15 @@ jobs:
         if: github.event_name != 'pull_request'
         shell: pwsh
         run: |
-          Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | ForEach-Object {
-            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$hash  $($_.Name)" | Set-Content src-tauri/target/release/bundle/nsis/SHA256SUMS.txt -Encoding ascii
-          }
+          $installer = Get-Item -LiteralPath "src-tauri/target/release/bundle/nsis/Glassnote_${env:GLASSNOTE_VERSION}_x64-setup.exe"
+          $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($installer.Name)" | Set-Content src-tauri/target/release/bundle/nsis/SHA256SUMS.txt -Encoding ascii
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: github.event_name != 'pull_request'
         with:
           name: glassnote-windows-x64
           path: |
-            src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/nsis/Glassnote_${{ env.GLASSNOTE_VERSION }}_x64-setup.exe
             src-tauri/target/release/bundle/nsis/SHA256SUMS.txt
           if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
