@@ -77,7 +77,7 @@ interface Commands {
   resume_capture: [{ id: string }, void];
   finish_capture: [
     { id: string; projectId: string; text: string; discard: boolean },
-    void,
+    boolean,
   ];
   shelve_capture: [{}, void];
   open_library: [{}, void];

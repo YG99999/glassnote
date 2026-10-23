@@ -204,16 +204,19 @@ export async function bootOverlay(root: HTMLElement) {
     if (working || saved) return;
     if (busy()) {
       pendingIntent = intent;
-      if (current.status === "recording") { await flush(); await call("stop_recording", { id }); current.status = "transcribing"; updateState(); notify("Finishing your voice note…"); }
+      if (current.status === "recording") { if (intent === "save") await flush(); await call("stop_recording", { id }); current.status = "transcribing"; updateState(); notify(intent === "save" ? "Finishing your voice note…" : "Stopping before discarding…"); }
       return;
     }
     working = true; updateState();
     try {
-      await flush();
-      if (intent === "close") { await leaveOverlay(); await call("shelve_capture", {}); return; }
-      if (intent === "discard") await leaveOverlay();
-      await call("finish_capture", { id, projectId, text: transcript, discard: intent === "discard" });
-      if (intent === "discard") return;
+      const discard = intent !== "save";
+      if (discard) { clearTimeout(saveTimer); await saveChain.catch(() => {}); await leaveOverlay(); }
+      else {
+        await flush();
+        if (!transcript.trim() && !annotations.some(a => a.type !== "pin" || a.text.trim()) && !current.audioPath) await leaveOverlay();
+      }
+      const kept = await call("finish_capture", { id, projectId, text: transcript, discard });
+      if (!kept) { saved = true; return; }
       saved = true;
       const name = snapshot.projects.find(p => p.id === projectId)?.name || "Inbox";
       morph(() => { $("recorderControls").hidden = true; $("savedConfirmation").hidden = false; $("savedText").textContent = `Saved to ${name}`; });
@@ -236,7 +239,7 @@ export async function bootOverlay(root: HTMLElement) {
     if (working || saved) return;
     if (current.status === "recording") { await call("stop_recording", { id }); current.status = "transcribing"; updateState(); return; }
     if (current.status === "transcribing") return;
-    if (!snapshot.modelReady) { error("Download the local English voice model first. You can save screenshots and typed notes now."); return; }
+    if (!snapshot.modelReady) { error("Download the local English voice model first. Add a typed note or drawing to save without voice."); return; }
     working = true; updateState();
     try {
       await flush();

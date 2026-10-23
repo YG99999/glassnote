@@ -50,7 +50,12 @@ try {
       if(command==='create_project'){if(!args.parentId&&!args.name.trim())throw'Enter a project name';const p={id:snapshot.projects.length===1?'87f5be98-0025-4fb9-a51f-01e267f2667c':'a9876543-1234-4567-8910-123456789012',name:args.parentId?String(snapshot.projects.filter(p=>p.parentId===args.parentId).length):args.name,parentId:args.parentId || null,createdAt:capture.createdAt};snapshot.projects.push(p);emit('library-changed',{});return p;}
       if(command==='start_recording'){capture.recordingTarget=args.annotationId ?? null;capture.status='recording';emit('library-changed',{});return;}
       if(command==='stop_recording'){capture.status='transcribing';emit('library-changed',{});setTimeout(()=>{capture.status='ready';if(capture.recordingTarget){capture.annotations.find(a=>a.id===capture.recordingTarget).text+='\n\nAn additional thought.';}else{capture.transcript+='\n\nAn additional thought.';}capture.audioSeconds+=3;capture.audioPath='fixture.wav';emit('transcription-complete',{captureId:capture.id});},150);return;}
-      if(command==='finish_capture'){capture.draft=false;capture.projectId=args.projectId;capture.transcript=args.text;return;}
+      if(command==='finish_capture'){
+        if(['recording','transcribing'].includes(capture.status))throw Error('Capture deleted while audio processing was active');
+        const kept=!args.discard&&(args.text.trim()||capture.audioPath||capture.annotations.some(a=>a.type!=='pin'||a.text.trim()));
+        if(!kept){snapshot.captures=[];snapshot.activeCaptureId=null;return false;}
+        capture.draft=false;capture.projectId=args.projectId;capture.transcript=args.text;return true;
+      }
       if(command==='plugin:event|listen'){listeners.set(args.event,[...(listeners.get(args.event)||[]),args.handler]);return++next;}
       if(command.startsWith('plugin:event|'))return;
       throw Error('Unexpected command '+command);
@@ -211,6 +216,35 @@ try {
   assert.equal(await page.evaluate(()=>window.__calls.some(c=>c.command==='open_library')),false);
   assert.equal(await page.evaluate(()=>window.__capture.annotations[0].text),'Make this easier to find.');
   assert.deepEqual(errors,[]);
-  console.log('PASS production overlay',region); await page.close();
+  console.log('PASS production overlay',region);
+  if(region[0]===.03){
+    for(const action of ['close','escape','empty-save','recording-close']){
+      await page.reload();
+      await page.waitForFunction(()=>window.__calls.some(c=>c.command==='overlay_presented')&&!document.body.classList.contains('overlay-entering'));
+      if(action==='empty-save'){
+        await page.evaluate(()=>{window.__capture.transcript=' \n ';window.__emit('library-changed',{});});
+        await page.waitForFunction(()=>document.querySelector('#captionText').value.trim()==='');
+        await page.locator('#saveButton').click();
+      }else{
+        if(action==='recording-close'){
+          await page.locator('#recordButton').click();
+          await page.waitForFunction(()=>window.__capture.status==='recording');
+        }
+        // A disk-full autosave error must not prevent an explicit discard.
+        await page.evaluate(()=>window.__saveFails=true);
+        if(action==='escape')await page.keyboard.press('Escape');
+        else await page.locator('#dismissButton').click();
+      }
+      await page.waitForFunction(()=>window.__snapshot.captures.length===0);
+      const calls=await page.evaluate(()=>window.__calls);
+      assert.equal(calls.some(c=>c.command==='shelve_capture'),false,'Cancelled/empty captures must not be shelved');
+      assert.equal(calls.some(c=>c.command==='open_library'),false);
+      assert.equal(calls.find(c=>c.command==='finish_capture').args.discard,action!=='empty-save');
+      if(action==='recording-close')assert.ok(calls.findIndex(c=>c.command==='stop_recording')<calls.findIndex(c=>c.command==='finish_capture'));
+      assert.equal(await page.evaluate(()=>document.body.classList.contains('overlay-leaving')),true);
+      console.log('PASS capture removal',action);
+    }
+  }
+  assert.deepEqual(errors,[]); await page.close();
  }
 }finally{await browser.close();await server.close();}

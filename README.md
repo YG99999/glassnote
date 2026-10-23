@@ -93,7 +93,7 @@ geometry are optional reads. Export just a subfolder when that is all you need.
 
 ## Status and limits
 
-**v0.1.0 is an early Windows 11 x64 release.** English only; accuracy depends on
+**v0.1.1 is an early Windows 11 x64 release.** English only; accuracy depends on
 speech, accent, background noise, and hardware. Tiny Whisper favors quick local
 feedback over maximum accuracy. No cloud API key or GPU is required. Local speech requires an AVX2-compatible
 x64 CPU with FMA, F16C, and BMI2; unsupported CPUs can still use screenshots and

@@ -56,7 +56,7 @@ npm run app:build
 ```
 
 The executable is `src-tauri/target/release/glassnote.exe`; the per-user installer
-is `src-tauri/target/release/bundle/nsis/Glassnote_0.1.0_x64-setup.exe`.
+is `src-tauri/target/release/bundle/nsis/Glassnote_0.1.1_x64-setup.exe`.
 The installer creates a desktop capture shortcut. `glassnote.exe --capture`
 starts capture directly. Open installed builds from Start or Explorer rather
 than a packaged terminal that redirects AppData.

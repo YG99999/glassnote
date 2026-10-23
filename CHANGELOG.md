@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 — 2026-10-23
+
+- Subfolder numbers now close gaps after deletion, preserving capture links and selected destinations.
+- Existing libraries normalize subfolder numbering on startup without changing capture files.
+- The capture × button and Escape discard the screenshot and its autosaved edits after safely stopping audio processing.
+- Save discards bare screenshots and empty numbered notes; text, drawings, and retained recordings count as content.
+
 ## 0.1.0 — 2026-10-22
 
 First public Windows release.

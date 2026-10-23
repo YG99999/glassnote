@@ -775,24 +775,16 @@ fn finish_capture(
     project_id: String,
     text: String,
     discard: bool,
-) -> Result<()> {
+) -> Result<bool> {
     ui(&window, &["recorder"])?;
     let state = app.state::<AppState>();
     authorize_capture(&window, &state, &id)?;
-    {
+    let kept = {
         let mut store = state.store.lock().map_err(io_error)?;
         ensure_editable(&store, &id)?;
-        if discard {
-            store.delete_capture(&id)?;
-        } else {
-            store.project(&project_id)?;
-            store.write_transcript(&id, &text)?;
-            store.move_capture(&id, &project_id)?;
-            store.update_capture(&id, |c| c.draft = false)?;
-            store.set_project(&project_id)?;
-        }
-    }
-    if discard {
+        store.finish_capture(&id, &project_id, &text, discard)?
+    };
+    if !kept {
         let mut session = state.session.lock().map_err(io_error)?;
         session.active_id = None;
         session.frames.clear();
@@ -803,7 +795,7 @@ fn finish_capture(
     }
     // Keep a saved pill alive briefly for its destination confirmation. The frontend then shelves it.
     changed(&app);
-    Ok(())
+    Ok(kept)
 }
 #[tauri::command]
 fn shelve_capture(window: WebviewWindow, app: tauri::AppHandle) -> Result<()> {
@@ -813,8 +805,9 @@ fn shelve_capture(window: WebviewWindow, app: tauri::AppHandle) -> Result<()> {
         let mut session = state.session.lock().map_err(io_error)?;
         if let Some(id) = &session.active_id {
             let store = state.store.lock().map_err(io_error)?;
-            if store.capture(id)?.status == "recording" {
-                return Err("Stop the recording before closing this capture".into());
+            let capture = store.capture(id)?;
+            if capture.draft || matches!(capture.status.as_str(), "recording" | "transcribing") {
+                return Err("Save or discard this capture before closing it".into());
             }
         }
         session.active_id = None;
@@ -910,7 +903,7 @@ fn start_recording(
     let state = app.state::<AppState>();
     authorize_capture(&window, &state, &id)?;
     if !speech::model_ready(&model_path(&state)?) {
-        return Err("Download the speech model in Settings before recording. You can still save a screenshot without audio.".into());
+        return Err("Download the speech model in Settings before recording. Add a typed note or drawing to save without voice.".into());
     }
     let stop = Arc::new(AtomicBool::new(false));
     let path;

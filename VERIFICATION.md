@@ -4,17 +4,21 @@ Checked on Windows 11 x64, Intel Core i7-1270P, CPU transcription, October 22, 2
 
 ## Automated checks
 
-- **19 Rust tests** cover scaled/reversed/invalid crops, secondary-monitor coordinate
+- **21 Rust tests** cover scaled/reversed/invalid crops, secondary-monitor coordinate
   conversion, annotation validation, atomic persistence and restart recovery,
   appended/interrupted recordings, transcript linkage, safe names, export links,
   optional audio/annotations, duplicate destinations, resampling, and silence.
 - Project tests cover automatic sibling numbering, one-level creation, rename
-  rejection, migration, scoped deletion, and unchanged capture links.
+  rejection, gap-closing migration/deletion, scoped deletion, and unchanged capture links.
+- Capture finishing tests verify that empty screenshots and cancelled captures are
+  removed from disk and stay absent after restart, while text, drawings, and audio survive Save.
 - TypeScript/Vite production build, Rust formatting, and Clippy with warnings denied.
 - Headless browser checks run the real frontend with mocked native IPC: light/dark
   and minimum-width layouts, collapsible folders and keyboard navigation,
   save failure/retry, numbered note dictation, append, project sharing/deletion,
   stable text selection/scrolling, frozen screenshot handoff, and normal/reduced motion.
+  The October 23 patch also checks ×, Escape, empty Save, and closing during recording,
+  including discarding when autosave fails.
 - The actual WebGL2 shader is exercised on synthetic, white, and near-black
   backgrounds. It stops drawing when controls are idle.
 

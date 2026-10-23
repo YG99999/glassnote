@@ -1,6 +1,6 @@
 [package]
 name = "glassnote"
-version = "0.1.0"
+version = "0.1.1"
 description = "Screenshots with linked local voice notes"
 authors = ["Yuval Gerassi"]
 license = "MIT"

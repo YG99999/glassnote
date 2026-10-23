@@ -59,6 +59,30 @@ struct Library {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     deleted_projects: Vec<String>,
 }
+impl Library {
+    fn renumber_subfolders(&mut self) -> bool {
+        let mut siblings = std::collections::BTreeMap::<String, Vec<usize>>::new();
+        for (index, project) in self.projects.iter().enumerate() {
+            if let Some(parent) = &project.parent_id {
+                siblings.entry(parent.clone()).or_default().push(index);
+            }
+        }
+        let mut changed = false;
+        for indices in siblings.values_mut() {
+            // Preserve the displayed order and stable IDs; only labels change.
+            indices
+                .sort_by_key(|&index| self.projects[index].name.parse::<u32>().unwrap_or(u32::MAX));
+            for (number, &index) in indices.iter().enumerate() {
+                let name = number.to_string();
+                if self.projects[index].name != name {
+                    self.projects[index].name = name;
+                    changed = true;
+                }
+            }
+        }
+        changed
+    }
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Capture {
@@ -187,31 +211,7 @@ impl Store {
                     .into(),
             );
         }
-        // Older versions allowed named subfolders. Keep their IDs and contents,
-        // assigning numbers without disturbing existing numbered siblings.
-        let mut used = std::collections::HashSet::new();
-        for project in &mut library.projects {
-            if let Some(parent) = &project.parent_id {
-                if let Ok(number) = project.name.parse::<u32>() {
-                    if project.name == number.to_string() && used.insert((parent.clone(), number)) {
-                        continue;
-                    }
-                }
-                library_changed = true;
-                project.name.clear();
-            }
-        }
-        for project in &mut library.projects {
-            if let Some(parent) = &project.parent_id {
-                if project.name.is_empty() {
-                    let number = (0..=u32::MAX)
-                        .find(|number| !used.contains(&(parent.clone(), *number)))
-                        .ok_or("This project has too many subfolders")?;
-                    used.insert((parent.clone(), number));
-                    project.name = number.to_string();
-                }
-            }
-        }
+        library_changed |= library.renumber_subfolders();
         let mut store = Self {
             root,
             library,
@@ -344,10 +344,7 @@ impl Store {
                 .projects
                 .iter()
                 .filter(|p| p.parent_id.as_deref() == Some(id))
-                .filter_map(|p| p.name.parse::<u32>().ok())
-                .max()
-                .map_or(Some(0), |n| n.checked_add(1))
-                .ok_or("This project has too many subfolders")?
+                .count()
                 .to_string()
         } else {
             validate_name(name)?
@@ -395,6 +392,7 @@ impl Store {
         let previous = self.library.clone();
         let fallback = self.project(id)?.parent_id.clone().unwrap_or(INBOX.into());
         self.library.projects.retain(|p| !ids.contains(&p.id));
+        self.library.renumber_subfolders();
         self.library.deleted_projects.extend(ids.iter().cloned());
         if ids.contains(&self.library.settings.active_project_id) {
             self.library.settings.active_project_id = fallback;
@@ -668,6 +666,31 @@ impl Store {
             self.warnings.push("A discarded capture could not be removed from disk. It is no longer in your library.".into());
         }
         Ok(())
+    }
+    pub fn finish_capture(
+        &mut self,
+        id: &str,
+        project_id: &str,
+        text: &str,
+        discard: bool,
+    ) -> Result<bool> {
+        let capture = self.capture(id)?;
+        let has_content = !text.trim().is_empty()
+            || capture
+                .annotations
+                .iter()
+                .any(|a| a.kind != "pin" || !a.text.trim().is_empty())
+            || self.asset(id, "audio.wav")?.exists();
+        if discard || !has_content {
+            self.delete_capture(id)?;
+            return Ok(false);
+        }
+        self.project(project_id)?;
+        self.write_transcript(id, text)?;
+        self.move_capture(id, project_id)?;
+        self.update_capture(id, |c| c.draft = false)?;
+        self.set_project(project_id)?;
+        Ok(true)
     }
     fn capture_view(&self, c: &Capture) -> Result<CaptureView> {
         let audio = self.asset(&c.id, "audio.wav")?;
@@ -1355,19 +1378,25 @@ mod tests {
         assert!(store.create_subproject("", Some(&zero.id)).is_err());
         assert_eq!(fs::read(root.path().join("library.json")).unwrap(), index);
         assert!(store.rename_project(&zero.id, "Renamed").is_err());
+        let id = store.insert_capture(b"image", 20, 10).unwrap();
+        store.move_capture(&id, &one.id).unwrap();
+        store.set_project(&one.id).unwrap();
         store.delete_project(&zero.id).unwrap();
+        assert_eq!(store.project(&one.id).unwrap().name, "0");
+        assert_eq!(store.capture(&id).unwrap().project_id, one.id);
+        assert_eq!(store.settings().active_project_id, one.id);
         drop(store);
         let mut store = Store::open(root.path().into()).unwrap();
-        assert_eq!(store.project(&one.id).unwrap().name, "1");
+        assert_eq!(store.project(&one.id).unwrap().name, "0");
         assert_eq!(
             store.create_subproject("", Some(&parent.id)).unwrap().name,
-            "2"
+            "1"
         );
         assert_eq!(store.create_subproject("", Some(INBOX)).unwrap().name, "0");
         assert!(store.create_project("").is_err());
     }
     #[test]
-    fn named_subfolders_migrate_without_changing_links_or_existing_numbers() {
+    fn subfolder_gaps_and_legacy_names_migrate_without_changing_links() {
         let root = tempfile::tempdir().unwrap();
         let mut store = Store::open(root.path().into()).unwrap();
         let parent = store.create_project("Review").unwrap();
@@ -1382,12 +1411,19 @@ mod tests {
             .find(|p| p.id == zero.id)
             .unwrap()
             .name = "Older name".into();
+        store
+            .library
+            .projects
+            .iter_mut()
+            .find(|p| p.id == one.id)
+            .unwrap()
+            .name = "7".into();
         store.persist_library().unwrap();
         let capture_bytes = fs::read(store.asset(&id, "capture.json").unwrap()).unwrap();
         drop(store);
         let store = Store::open(root.path().into()).unwrap();
-        assert_eq!(store.project(&zero.id).unwrap().name, "0");
-        assert_eq!(store.project(&one.id).unwrap().name, "1");
+        assert_eq!(store.project(&zero.id).unwrap().name, "1");
+        assert_eq!(store.project(&one.id).unwrap().name, "0");
         assert_eq!(store.capture(&id).unwrap().project_id, zero.id);
         assert_eq!(
             fs::read(store.asset(&id, "capture.json").unwrap()).unwrap(),
@@ -1397,6 +1433,68 @@ mod tests {
         drop(store);
         Store::open(root.path().into()).unwrap();
         assert_eq!(fs::read(root.path().join("library.json")).unwrap(), index);
+    }
+    #[test]
+    fn finishing_empty_or_discarded_captures_removes_their_files() {
+        let root = tempfile::tempdir().unwrap();
+        let mut store = Store::open(root.path().into()).unwrap();
+        let empty = store.insert_capture(b"image", 20, 10).unwrap();
+        let dir = store.capture_dir(&empty).unwrap();
+        assert!(!store.finish_capture(&empty, INBOX, " \n\t", false).unwrap());
+        assert!(!dir.exists());
+        let discarded = store.insert_capture(b"image", 20, 10).unwrap();
+        store
+            .write_transcript(&discarded, "Autosaved but cancelled")
+            .unwrap();
+        wav(&store.asset(&discarded, "audio.wav").unwrap(), 1000);
+        let dir = store.capture_dir(&discarded).unwrap();
+        assert!(!store
+            .finish_capture(&discarded, INBOX, "Typed text", true)
+            .unwrap());
+        assert!(!dir.exists());
+        drop(store);
+        assert!(Store::open(root.path().into()).unwrap().captures.is_empty());
+    }
+    #[test]
+    fn saving_keeps_text_drawings_and_recordings_but_not_empty_pins() {
+        let root = tempfile::tempdir().unwrap();
+        let mut store = Store::open(root.path().into()).unwrap();
+        for kind in ["text", "pin", "rectangle", "audio", "empty-pin"] {
+            let id = store.insert_capture(b"image", 20, 10).unwrap();
+            if matches!(kind, "pin" | "rectangle" | "empty-pin") {
+                store
+                    .update_capture(&id, |c| {
+                        c.annotations.push(crate::annotations::Annotation {
+                            id: 1,
+                            kind: if kind == "rectangle" {
+                                "rectangle"
+                            } else {
+                                "pin"
+                            }
+                            .into(),
+                            color: "#3b73e0".into(),
+                            x: 100.0,
+                            y: 100.0,
+                            x2: 200.0,
+                            y2: 200.0,
+                            points: vec![],
+                            text: if kind == "pin" { "A note" } else { " " }.into(),
+                        })
+                    })
+                    .unwrap();
+            }
+            if kind == "audio" {
+                wav(&store.asset(&id, "audio.wav").unwrap(), 1000);
+            }
+            let text = if kind == "text" { "A thought" } else { "" };
+            let kept = store.finish_capture(&id, INBOX, text, false).unwrap();
+            assert_eq!(kept, kind != "empty-pin");
+            if kept {
+                assert!(!store.capture(&id).unwrap().draft);
+            }
+        }
+        drop(store);
+        assert_eq!(Store::open(root.path().into()).unwrap().captures.len(), 4);
     }
     #[test]
     fn numbered_dictation_recovers_target_and_preserves_main_transcript() {
